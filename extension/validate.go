@@ -129,6 +129,9 @@ func ValidateDescriptor(descriptor Descriptor) error {
 		if err := validateFields(recipe.Arguments); err != nil {
 			return fmt.Errorf("Recipe %q arguments: %w", recipe.ID, err)
 		}
+		if err := validateRequirements(recipe.Requires); err != nil {
+			return fmt.Errorf("Recipe %q requirements: %w", recipe.ID, err)
+		}
 		key := scopedID(recipe.Scope, recipe.ID)
 		if _, exists := seenRecipes[key]; exists {
 			return fmt.Errorf("duplicate Recipe %q in one scope", recipe.ID)
@@ -235,6 +238,46 @@ func ValidateDescriptor(descriptor Descriptor) error {
 				return fmt.Errorf("duplicate Character ability %q", ability.ID)
 			}
 			seenAbilities[ability.ID] = struct{}{}
+		}
+	}
+	return nil
+}
+
+func validateRequirements(requires Requirements) error {
+	seenLocations := make(map[string]struct{}, len(requires.Locations))
+	for _, id := range requires.Locations {
+		if id == "" {
+			return fmt.Errorf("location id must not be empty")
+		}
+		if _, exists := seenLocations[id]; exists {
+			return fmt.Errorf("duplicate location %q", id)
+		}
+		seenLocations[id] = struct{}{}
+	}
+	for index, requirement := range requires.Components {
+		if requirement.Component == "" {
+			return fmt.Errorf("component requirement %d needs a component id", index)
+		}
+		if (requirement.Target == "") == !requirement.CurrentLocation {
+			return fmt.Errorf(
+				"component requirement %d must set exactly one of target or current_location",
+				index,
+			)
+		}
+		for field, value := range requirement.Values {
+			if field == "" {
+				return fmt.Errorf("component requirement %d has an empty field id", index)
+			}
+			switch value.(type) {
+			case string, bool, int, int64, float64, json.Number:
+			default:
+				return fmt.Errorf(
+					"component requirement %d field %q has unsupported equality value %T",
+					index,
+					field,
+					value,
+				)
+			}
 		}
 	}
 	return nil

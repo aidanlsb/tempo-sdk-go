@@ -22,12 +22,28 @@ type Scope struct {
 	ScenarioID string    `json:"scenario,omitempty"`
 }
 
+type ComponentRequirement struct {
+	// Target names a concrete component target. It is mutually exclusive with
+	// CurrentLocation.
+	Target string `json:"target,omitempty"`
+	// CurrentLocation resolves the target as "location:<actor Presence>".
+	CurrentLocation bool           `json:"current_location,omitempty"`
+	Component       string         `json:"component"`
+	Values          map[string]any `json:"values,omitempty"`
+}
+
 type Requirements struct {
 	Abilities     []string         `json:"abilities,omitempty"`
 	MinAttributes map[string]int64 `json:"min_attributes,omitempty"`
 	// Knowledge lists Knowledge item IDs the acting Character must have
 	// acquired for the Recipe to be available.
 	Knowledge []string `json:"knowledge,omitempty"`
+	// Locations, when non-empty, restricts the Recipe to an actor whose current
+	// Presence Location is one of these IDs.
+	Locations []string `json:"locations,omitempty"`
+	// Components requires component presence and optional field equality on a
+	// concrete target or the actor's current Location.
+	Components []ComponentRequirement `json:"components,omitempty"`
 }
 
 type Recipe struct {
@@ -163,10 +179,11 @@ type Map struct {
 }
 
 type Location struct {
-	ID          string `json:"id"`
-	Map         string `json:"map"`
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
+	ID                  string `json:"id"`
+	Map                 string `json:"map"`
+	Name                string `json:"name"`
+	Description         string `json:"description,omitempty"`
+	DescriptionMarkdown string `json:"description_markdown,omitempty"`
 }
 
 type Path struct {

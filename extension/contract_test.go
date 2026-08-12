@@ -22,6 +22,14 @@ func TestContractRoundTrip(t *testing.T) {
 			Name:    "Perform",
 			Scope:   Scope{Kind: ScopeScenario, CampaignID: "story", ScenarioID: "opening"},
 			Handler: "handler:test.perform",
+			Requires: Requirements{
+				Locations: []string{"observatory"},
+				Components: []ComponentRequirement{{
+					CurrentLocation: true,
+					Component:       "test.state",
+					Values:          map[string]any{"active": true},
+				}},
+			},
 		}},
 		Systems: []System{{
 			ID:      "test.tick",
@@ -52,6 +60,21 @@ func TestContractRoundTrip(t *testing.T) {
 	}
 	if err := ValidateDescriptor(decoded); err != nil {
 		t.Fatalf("ValidateDescriptor() error = %v", err)
+	}
+}
+
+func TestValidateDescriptorRejectsInvalidComponentRequirement(t *testing.T) {
+	err := ValidateDescriptor(Descriptor{
+		ID: "test",
+		Recipes: []Recipe{{
+			ID: "test.perform", Name: "Perform", Handler: "perform",
+			Requires: Requirements{Components: []ComponentRequirement{{
+				Target: "location:a", CurrentLocation: true, Component: "test.state",
+			}}},
+		}},
+	})
+	if err == nil {
+		t.Fatal("ValidateDescriptor() accepted an ambiguous component requirement")
 	}
 }
 
