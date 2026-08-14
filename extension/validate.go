@@ -208,6 +208,20 @@ func ValidateDescriptor(descriptor Descriptor) error {
 		}
 		seenPerceptions[key] = struct{}{}
 	}
+	seenResolvers := make(map[string]struct{})
+	for _, resolver := range descriptor.Resolvers {
+		if resolver.ID == "" || resolver.Name == "" || resolver.Handler == "" {
+			return fmt.Errorf("DecisionResolver id, name, and handler are required")
+		}
+		if err := validateScope(resolver.Scope); err != nil {
+			return fmt.Errorf("DecisionResolver %q: %w", resolver.ID, err)
+		}
+		key := scopedID(resolver.Scope, resolver.ID)
+		if _, exists := seenResolvers[key]; exists {
+			return fmt.Errorf("duplicate DecisionResolver %q in one scope", resolver.ID)
+		}
+		seenResolvers[key] = struct{}{}
+	}
 	seenComponents := make(map[string]struct{})
 	for _, component := range descriptor.Components {
 		if component.ID == "" {

@@ -30,6 +30,7 @@ func Compose(ctx context.Context, invokers ...Invoker) (*CompositeInvoker, error
 	recipes := make(map[string]Recipe)
 	systems := make(map[string]System)
 	perceptions := make(map[string]PerceptionRule)
+	resolvers := make(map[string]DecisionResolver)
 	components := make(map[string]ComponentSchema)
 	for index, invoker := range invokers {
 		if invoker == nil {
@@ -71,6 +72,15 @@ func Compose(ctx context.Context, invokers ...Invoker) (*CompositeInvoker, error
 			rule.Handler = handler
 			perceptions[scopedID(rule.Scope, rule.ID)] = rule
 		}
+		for _, resolver := range descriptor.Resolvers {
+			handler := compositeHandler(index, resolver.Handler)
+			composite.routes[handler] = compositeRoute{
+				invoker: invoker,
+				handler: resolver.Handler,
+			}
+			resolver.Handler = handler
+			resolvers[scopedID(resolver.Scope, resolver.ID)] = resolver
+		}
 		for _, component := range descriptor.Components {
 			components[scopedID(component.Scope, component.ID)] = component
 		}
@@ -82,6 +92,7 @@ func Compose(ctx context.Context, invokers ...Invoker) (*CompositeInvoker, error
 	composite.descriptor.Recipes = sortedValues(recipes)
 	composite.descriptor.Systems = sortedValues(systems)
 	composite.descriptor.Perceptions = sortedValues(perceptions)
+	composite.descriptor.Resolvers = sortedValues(resolvers)
 	composite.descriptor.Components = sortedValues(components)
 	if err := ValidateDescriptor(composite.descriptor); err != nil {
 		return nil, err

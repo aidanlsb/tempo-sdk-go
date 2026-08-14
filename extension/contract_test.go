@@ -46,6 +46,9 @@ func TestContractRoundTrip(t *testing.T) {
 			EventType: "test.ticked",
 			Handler:   "handler:test.see-tick",
 		}},
+		Resolvers: []DecisionResolver{{
+			ID: "test.resolve", Name: "Resolve", Handler: "handler:test.resolve",
+		}},
 	}
 	data, err := json.Marshal(descriptor)
 	if err != nil {
@@ -60,6 +63,68 @@ func TestContractRoundTrip(t *testing.T) {
 	}
 	if err := ValidateDescriptor(decoded); err != nil {
 		t.Fatalf("ValidateDescriptor() error = %v", err)
+	}
+}
+
+func TestDecisionInvocationRoundTrip(t *testing.T) {
+	request := InvokeRequest{
+		Kind: HandlerDecisionResolver, Handler: "resolve", Clock: 42,
+		Decision: &DecisionWindowContext{
+			ID: "exchange/1", Flow: "combat", Resolver: "test.resolve",
+			Turn: "run/turn/1", Generation: 2, WorldRevision: 4,
+			EligibleActors: []string{"a", "b"},
+			AllowedRecipes: map[string][]string{
+				"a": {"test.attack"}, "b": {"test.guard"},
+			},
+			CompletionPolicy: CompletionAllRequired,
+			DisclosurePolicy: DisclosureSealedUntilResolution,
+			Decisions: []Decision{
+				{Actor: "a", Recipe: "test.attack", RequestID: "one"},
+				{Actor: "b", Recipe: "test.guard", RequestID: "two"},
+			},
+		},
+	}
+	data, err := json.Marshal(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded InvokeRequest
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(decoded, request) {
+		t.Fatalf("round trip = %#v, want %#v", decoded, request)
+	}
+
+	result := InvokeResult{Transition: &DecisionTransition{
+		Next: &DecisionWindowSpec{
+			ID: "exchange/2", Resolver: "test.resolve",
+			EligibleActors:   []string{"b"},
+			AllowedRecipes:   map[string][]string{"b": {"test.guard"}},
+			CompletionPolicy: CompletionAllRequired,
+			DisclosurePolicy: DisclosureOnAcceptance,
+		},
+	}}
+	data, err = json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decodedResult InvokeResult
+	if err := json.Unmarshal(data, &decodedResult); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(decodedResult, result) {
+		t.Fatalf("result round trip = %#v, want %#v", decodedResult, result)
+	}
+}
+
+func TestValidateDescriptorRejectsInvalidDecisionResolver(t *testing.T) {
+	err := ValidateDescriptor(Descriptor{
+		ID:        "test",
+		Resolvers: []DecisionResolver{{ID: "resolve", Name: "Resolve"}},
+	})
+	if err == nil {
+		t.Fatal("ValidateDescriptor() accepted a resolver without a handler")
 	}
 }
 
