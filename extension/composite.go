@@ -32,6 +32,7 @@ func Compose(ctx context.Context, invokers ...Invoker) (*CompositeInvoker, error
 	perceptions := make(map[string]PerceptionRule)
 	resolvers := make(map[string]DecisionResolver)
 	components := make(map[string]ComponentSchema)
+	relationships := make(map[string]RelationshipSchema)
 	for index, invoker := range invokers {
 		if invoker == nil {
 			continue
@@ -84,6 +85,9 @@ func Compose(ctx context.Context, invokers ...Invoker) (*CompositeInvoker, error
 		for _, component := range descriptor.Components {
 			components[scopedID(component.Scope, component.ID)] = component
 		}
+		for _, relationship := range descriptor.Relationships {
+			relationships[relationship.Kind] = relationship
+		}
 		if descriptor.Character != nil {
 			value := *descriptor.Character
 			composite.descriptor.Character = &value
@@ -94,6 +98,7 @@ func Compose(ctx context.Context, invokers ...Invoker) (*CompositeInvoker, error
 	composite.descriptor.Perceptions = sortedValues(perceptions)
 	composite.descriptor.Resolvers = sortedValues(resolvers)
 	composite.descriptor.Components = sortedValues(components)
+	composite.descriptor.Relationships = sortedValues(relationships)
 	if err := ValidateDescriptor(composite.descriptor); err != nil {
 		return nil, err
 	}
