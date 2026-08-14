@@ -64,6 +64,39 @@ func TestCompositeInvokerRoutesHigherPrecedenceOverride(t *testing.T) {
 	}
 }
 
+func TestCompositeInvokerRoutesDecisionResolver(t *testing.T) {
+	pack := &fixedInvoker{
+		name: "resolver",
+		descriptor: Descriptor{
+			ID: "pack",
+			Resolvers: []DecisionResolver{{
+				ID: "test.resolve", Name: "Resolve", Handler: "resolve",
+			}},
+		},
+	}
+	composite, err := Compose(context.Background(), pack)
+	if err != nil {
+		t.Fatal(err)
+	}
+	descriptor, err := composite.Describe(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(descriptor.Resolvers) != 1 ||
+		descriptor.Resolvers[0].Handler == "resolve" {
+		t.Fatalf("composite resolver descriptor = %#v", descriptor.Resolvers)
+	}
+	result, err := composite.Invoke(context.Background(), InvokeRequest{
+		Kind: HandlerDecisionResolver, Handler: descriptor.Resolvers[0].Handler,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Events) != 1 || result.Events[0].Type != "resolver" {
+		t.Fatalf("composite resolver result = %#v", result)
+	}
+}
+
 func TestCompositeInvokerKeepsNarrowerScope(t *testing.T) {
 	stock := &fixedInvoker{
 		descriptor: Descriptor{

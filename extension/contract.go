@@ -102,6 +102,15 @@ type PerceptionRule struct {
 	Handler   string         `json:"handler"`
 }
 
+// DecisionResolver is Universe-authored aggregate resolution logic for one
+// engine-owned coordinated decision window.
+type DecisionResolver struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Scope   Scope  `json:"scope,omitempty"`
+	Handler string `json:"handler"`
+}
+
 type ValueType string
 
 const (
@@ -148,21 +157,73 @@ type CharacterSchema struct {
 }
 
 type Descriptor struct {
-	ID          string            `json:"id"`
-	Character   *CharacterSchema  `json:"character,omitempty"`
-	Components  []ComponentSchema `json:"components,omitempty"`
-	Recipes     []Recipe          `json:"recipes,omitempty"`
-	Systems     []System          `json:"systems,omitempty"`
-	Perceptions []PerceptionRule  `json:"perceptions,omitempty"`
+	ID          string             `json:"id"`
+	Character   *CharacterSchema   `json:"character,omitempty"`
+	Components  []ComponentSchema  `json:"components,omitempty"`
+	Recipes     []Recipe           `json:"recipes,omitempty"`
+	Systems     []System           `json:"systems,omitempty"`
+	Perceptions []PerceptionRule   `json:"perceptions,omitempty"`
+	Resolvers   []DecisionResolver `json:"resolvers,omitempty"`
 }
 
 type HandlerKind string
 
 const (
-	HandlerRecipe     HandlerKind = "recipe"
-	HandlerSystem     HandlerKind = "system"
-	HandlerPerception HandlerKind = "perception"
+	HandlerRecipe           HandlerKind = "recipe"
+	HandlerSystem           HandlerKind = "system"
+	HandlerPerception       HandlerKind = "perception"
+	HandlerDecisionResolver HandlerKind = "decision_resolver"
 )
+
+type CompletionPolicy string
+
+const CompletionAllRequired CompletionPolicy = "all_required"
+
+type DisclosurePolicy string
+
+const (
+	DisclosureSealedUntilResolution DisclosurePolicy = "sealed_until_resolution"
+	DisclosureOnAcceptance          DisclosurePolicy = "disclose_on_acceptance"
+)
+
+// DecisionWindowSpec configures one atomic decision boundary. Sequential
+// interactions chain single-actor specs; simultaneous interactions use
+// several eligible actors in one spec.
+type DecisionWindowSpec struct {
+	ID               string              `json:"id"`
+	Flow             string              `json:"flow,omitempty"`
+	Resolver         string              `json:"resolver"`
+	EligibleActors   []string            `json:"eligible_actors"`
+	AllowedRecipes   map[string][]string `json:"allowed_recipes"`
+	CompletionPolicy CompletionPolicy    `json:"completion_policy"`
+	DisclosurePolicy DisclosurePolicy    `json:"disclosure_policy"`
+}
+
+type Decision struct {
+	Actor     string            `json:"actor"`
+	Recipe    string            `json:"recipe"`
+	Arguments map[string]string `json:"arguments,omitempty"`
+	RequestID string            `json:"request_id"`
+}
+
+type DecisionWindowContext struct {
+	ID               string              `json:"id"`
+	Flow             string              `json:"flow,omitempty"`
+	Resolver         string              `json:"resolver"`
+	Turn             string              `json:"turn"`
+	Generation       uint64              `json:"generation"`
+	WorldRevision    uint64              `json:"world_revision"`
+	EligibleActors   []string            `json:"eligible_actors"`
+	AllowedRecipes   map[string][]string `json:"allowed_recipes"`
+	CompletionPolicy CompletionPolicy    `json:"completion_policy"`
+	DisclosurePolicy DisclosurePolicy    `json:"disclosure_policy"`
+	Decisions        []Decision          `json:"decisions"`
+}
+
+type DecisionTransition struct {
+	Next      *DecisionWindowSpec `json:"next,omitempty"`
+	CloseTurn bool                `json:"close_turn,omitempty"`
+}
 
 type Character struct {
 	ID          string         `json:"id"`
@@ -267,18 +328,19 @@ type PerceptionContext struct {
 }
 
 type InvokeRequest struct {
-	Kind          HandlerKind       `json:"kind"`
-	Handler       string            `json:"handler"`
-	Campaign      string            `json:"campaign"`
-	Scenario      string            `json:"scenario"`
-	Actor         string            `json:"actor,omitempty"`
-	Arguments     map[string]string `json:"arguments,omitempty"`
-	Clock         int64             `json:"clock"`
-	Trigger       TriggerContext    `json:"trigger,omitempty"`
-	Perception    PerceptionContext `json:"perception,omitempty"`
-	PreviousWorld *WorldView        `json:"previous_world,omitempty"`
-	World         WorldView         `json:"world"`
-	AttributeMax  map[string]int64  `json:"attribute_max,omitempty"`
+	Kind          HandlerKind            `json:"kind"`
+	Handler       string                 `json:"handler"`
+	Campaign      string                 `json:"campaign"`
+	Scenario      string                 `json:"scenario"`
+	Actor         string                 `json:"actor,omitempty"`
+	Arguments     map[string]string      `json:"arguments,omitempty"`
+	Clock         int64                  `json:"clock"`
+	Trigger       TriggerContext         `json:"trigger,omitempty"`
+	Perception    PerceptionContext      `json:"perception,omitempty"`
+	PreviousWorld *WorldView             `json:"previous_world,omitempty"`
+	World         WorldView              `json:"world"`
+	Decision      *DecisionWindowContext `json:"decision,omitempty"`
+	AttributeMax  map[string]int64       `json:"attribute_max,omitempty"`
 	// Seed is the fresh Action-level RNG seed Tempo mints for this invocation
 	// (from OS entropy on live turns, or injected by tests). Handlers draw
 	// randomness by keying a local recordable PRNG on this value via the shared
@@ -381,7 +443,8 @@ type InvokeResult struct {
 	// request Seed, in draw order. Tempo records it (with the Seed) on the
 	// committed Action so a turn's randomness is reconstructable. Replay never
 	// reads Draws to recompute state — it folds recorded Effects only.
-	Draws []rng.Draw `json:"draws,omitempty"`
+	Draws      []rng.Draw          `json:"draws,omitempty"`
+	Transition *DecisionTransition `json:"transition,omitempty"`
 }
 
 type Invoker interface {
