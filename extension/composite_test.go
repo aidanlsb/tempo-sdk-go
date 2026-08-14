@@ -154,3 +154,39 @@ func TestCompositeInvokerRetainsDisableTombstone(t *testing.T) {
 		t.Fatalf("disable descriptor = %#v", descriptor)
 	}
 }
+
+func TestCompositeInvokerMergesRelationshipSchemasByKind(t *testing.T) {
+	stock := &fixedInvoker{descriptor: Descriptor{
+		ID: "stock",
+		Relationships: []RelationshipSchema{{
+			Kind:   "suspicion",
+			Fields: []FieldSchema{{ID: "level", Type: ValueInteger}},
+		}},
+	}}
+	pack := &fixedInvoker{descriptor: Descriptor{
+		ID: "pack",
+		Relationships: []RelationshipSchema{
+			{
+				Kind:   "suspicion",
+				Fields: []FieldSchema{{ID: "confirmed", Type: ValueBoolean}},
+			},
+			{
+				Kind:   "obligation",
+				Fields: []FieldSchema{{ID: "settled", Type: ValueBoolean}},
+			},
+		},
+	}}
+	composite, err := Compose(context.Background(), stock, pack)
+	if err != nil {
+		t.Fatal(err)
+	}
+	descriptor, _ := composite.Describe(context.Background())
+	if len(descriptor.Relationships) != 2 {
+		t.Fatalf("Relationship schemas = %#v", descriptor.Relationships)
+	}
+	for _, schema := range descriptor.Relationships {
+		if schema.Kind == "suspicion" && schema.Fields[0].ID != "confirmed" {
+			t.Fatalf("overridden Relationship schema = %#v", schema)
+		}
+	}
+}

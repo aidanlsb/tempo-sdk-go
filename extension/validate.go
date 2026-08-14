@@ -7,8 +7,8 @@ import (
 )
 
 // EntityResolver reports whether a core entity of the given kind and id exists.
-// It is supplied by callers of ValidateComponentValue so the extension package
-// stays free of engine World types.
+// It is supplied by typed-value validators so the extension package stays free
+// of engine World types.
 type EntityResolver func(kind EntityKind, id string) bool
 
 // ValidateComponentValue checks a component instance's field values against a
@@ -20,46 +20,65 @@ func ValidateComponentValue(
 	value map[string]any,
 	exists EntityResolver,
 ) error {
-	fields := make(map[string]FieldSchema, len(schema.Fields))
-	for _, field := range schema.Fields {
+	return validateFieldValues("component", schema.ID, schema.Fields, value, exists)
+}
+
+// ValidateRelationshipValue checks one Relationship's Values against its
+// declared schema using the same field types and constraints as Components.
+func ValidateRelationshipValue(
+	schema RelationshipSchema,
+	value map[string]any,
+	exists EntityResolver,
+) error {
+	return validateFieldValues("relationship", schema.Kind, schema.Fields, value, exists)
+}
+
+func validateFieldValues(
+	subject, schemaID string,
+	fieldSchemas []FieldSchema,
+	value map[string]any,
+	exists EntityResolver,
+) error {
+	fields := make(map[string]FieldSchema, len(fieldSchemas))
+	for _, field := range fieldSchemas {
 		fields[field.ID] = field
 	}
 	for id, field := range fields {
 		if field.Required {
 			if _, ok := value[id]; !ok {
-				return fmt.Errorf("component %q requires field %q", schema.ID, id)
+				return fmt.Errorf("%s %q requires field %q", subject, schemaID, id)
 			}
 		}
 	}
 	for id, fieldValue := range value {
 		field, ok := fields[id]
 		if !ok {
-			return fmt.Errorf("component %q has unknown field %q", schema.ID, id)
+			return fmt.Errorf("%s %q has unknown field %q", subject, schemaID, id)
 		}
 		switch field.Type {
 		case ValueInteger:
 			integer, ok := coerceInt64(fieldValue)
 			if !ok {
-				return fmt.Errorf("component %q field %q must be integer", schema.ID, id)
+				return fmt.Errorf("%s %q field %q must be integer", subject, schemaID, id)
 			}
 			if field.Min != nil && integer < *field.Min {
-				return fmt.Errorf("component %q field %q is below minimum", schema.ID, id)
+				return fmt.Errorf("%s %q field %q is below minimum", subject, schemaID, id)
 			}
 			if field.Max != nil && integer > *field.Max {
-				return fmt.Errorf("component %q field %q exceeds maximum", schema.ID, id)
+				return fmt.Errorf("%s %q field %q exceeds maximum", subject, schemaID, id)
 			}
 		case ValueBoolean:
 			if _, ok := fieldValue.(bool); !ok {
-				return fmt.Errorf("component %q field %q must be boolean", schema.ID, id)
+				return fmt.Errorf("%s %q field %q must be boolean", subject, schemaID, id)
 			}
 		case ValueString:
 			if _, ok := fieldValue.(string); !ok {
-				return fmt.Errorf("component %q field %q must be string", schema.ID, id)
+				return fmt.Errorf("%s %q field %q must be string", subject, schemaID, id)
 			}
 		case ValueEnum:
 			stringValue, ok := fieldValue.(string)
 			if !ok {
-				return fmt.Errorf("component %q field %q must be enum string", schema.ID, id)
+				return fmt.Errorf("%s %q field %q must be enum string", subject, schemaID, id)
 			}
 			found := false
 			for _, allowed := range field.Values {
@@ -69,14 +88,15 @@ func ValidateComponentValue(
 				}
 			}
 			if !found {
-				return fmt.Errorf("component %q field %q has invalid value", schema.ID, id)
+				return fmt.Errorf("%s %q field %q has invalid value", subject, schemaID, id)
 			}
 		case ValueEntity:
 			entityID, ok := fieldValue.(string)
 			if !ok || exists == nil || !exists(field.Target, entityID) {
 				return fmt.Errorf(
-					"component %q field %q does not resolve to %s",
-					schema.ID,
+					"%s %q field %q does not resolve to %s",
+					subject,
+					schemaID,
 					id,
 					field.Target,
 				)
@@ -237,6 +257,22 @@ func ValidateDescriptor(descriptor Descriptor) error {
 		seenComponents[key] = struct{}{}
 		if err := validateFields(component.Fields); err != nil {
 			return fmt.Errorf("Component %q: %w", component.ID, err)
+		}
+	}
+	seenRelationships := make(map[string]struct{})
+	for _, relationship := range descriptor.Relationships {
+		if relationship.Kind == "" {
+			return fmt.Errorf("Relationship kind is required")
+		}
+		if _, exists := seenRelationships[relationship.Kind]; exists {
+			return fmt.Errorf(
+				"duplicate Relationship %q",
+				relationship.Kind,
+			)
+		}
+		seenRelationships[relationship.Kind] = struct{}{}
+		if err := validateFields(relationship.Fields); err != nil {
+			return fmt.Errorf("Relationship %q: %w", relationship.Kind, err)
 		}
 	}
 	if descriptor.Character != nil {

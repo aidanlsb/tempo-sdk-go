@@ -146,6 +146,13 @@ type ComponentSchema struct {
 	Fields []FieldSchema `json:"fields,omitempty"`
 }
 
+// RelationshipSchema declares optional typed values for one Relationship kind.
+// Kinds without a schema remain qualitative and cannot carry Values.
+type RelationshipSchema struct {
+	Kind   string        `json:"kind"`
+	Fields []FieldSchema `json:"fields,omitempty"`
+}
+
 type AbilitySchema struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
@@ -157,13 +164,14 @@ type CharacterSchema struct {
 }
 
 type Descriptor struct {
-	ID          string             `json:"id"`
-	Character   *CharacterSchema   `json:"character,omitempty"`
-	Components  []ComponentSchema  `json:"components,omitempty"`
-	Recipes     []Recipe           `json:"recipes,omitempty"`
-	Systems     []System           `json:"systems,omitempty"`
-	Perceptions []PerceptionRule   `json:"perceptions,omitempty"`
-	Resolvers   []DecisionResolver `json:"resolvers,omitempty"`
+	ID            string               `json:"id"`
+	Character     *CharacterSchema     `json:"character,omitempty"`
+	Components    []ComponentSchema    `json:"components,omitempty"`
+	Relationships []RelationshipSchema `json:"relationships,omitempty"`
+	Recipes       []Recipe             `json:"recipes,omitempty"`
+	Systems       []System             `json:"systems,omitempty"`
+	Perceptions   []PerceptionRule     `json:"perceptions,omitempty"`
+	Resolvers     []DecisionResolver   `json:"resolvers,omitempty"`
 }
 
 type HandlerKind string
@@ -262,11 +270,12 @@ type Presence struct {
 
 // Relationship is the read-only view of a directed Character → Character edge.
 type Relationship struct {
-	ID          string `json:"id"`
-	From        string `json:"from"`
-	To          string `json:"to"`
-	Kind        string `json:"kind"`
-	Description string `json:"description,omitempty"`
+	ID          string         `json:"id"`
+	From        string         `json:"from"`
+	To          string         `json:"to"`
+	Kind        string         `json:"kind"`
+	Description string         `json:"description,omitempty"`
+	Values      map[string]any `json:"values,omitempty"`
 }
 
 // Knowledge is the read-only view of an authored memorizable item.
@@ -394,13 +403,14 @@ type ComponentSet struct {
 // RelationshipSet creates or replaces a directed edge. Scope is "campaign" or
 // "scenario"; a Scenario-scoped edge requires IntroducedBy.
 type RelationshipSet struct {
-	ID           string `json:"id"`
-	From         string `json:"from"`
-	To           string `json:"to"`
-	Kind         string `json:"kind"`
-	Description  string `json:"description,omitempty"`
-	Scope        string `json:"scope,omitempty"`
-	IntroducedBy string `json:"introduced_by,omitempty"`
+	ID           string         `json:"id"`
+	From         string         `json:"from"`
+	To           string         `json:"to"`
+	Kind         string         `json:"kind"`
+	Description  string         `json:"description,omitempty"`
+	Values       map[string]any `json:"values,omitempty"`
+	Scope        string         `json:"scope,omitempty"`
+	IntroducedBy string         `json:"introduced_by,omitempty"`
 }
 
 // RelationshipRemove deletes a directed edge by stable id.

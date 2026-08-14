@@ -17,6 +17,13 @@ func TestContractRoundTrip(t *testing.T) {
 				Type: ValueBoolean,
 			}},
 		}},
+		Relationships: []RelationshipSchema{{
+			Kind: "suspicion",
+			Fields: []FieldSchema{
+				{ID: "level", Type: ValueInteger, Required: true},
+				{ID: "confirmed", Type: ValueBoolean},
+			},
+		}},
 		Recipes: []Recipe{{
 			ID:      "test.perform",
 			Name:    "Perform",
@@ -207,6 +214,48 @@ func TestValidateDescriptorRejectsContradictoryFieldSchema(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("ValidateDescriptor() accepted values on a boolean field")
+	}
+}
+
+func TestValidateRelationshipValue(t *testing.T) {
+	minimum, maximum := int64(0), int64(100)
+	schema := RelationshipSchema{
+		Kind: "suspicion",
+		Fields: []FieldSchema{
+			{ID: "level", Type: ValueInteger, Required: true, Min: &minimum, Max: &maximum},
+			{ID: "confirmed", Type: ValueBoolean},
+			{ID: "basis", Type: ValueEnum, Values: []string{"instinct", "evidence"}},
+		},
+	}
+	if err := ValidateRelationshipValue(schema, map[string]any{
+		"level": int64(72), "confirmed": false, "basis": "evidence",
+	}, nil); err != nil {
+		t.Fatalf("ValidateRelationshipValue() error = %v", err)
+	}
+	for name, values := range map[string]map[string]any{
+		"missing required": {"confirmed": false},
+		"above maximum":    {"level": int64(101)},
+		"invalid enum":     {"level": int64(50), "basis": "rumor"},
+		"unknown field":    {"level": int64(50), "motive": "unknown"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := ValidateRelationshipValue(schema, values, nil); err == nil {
+				t.Fatal("ValidateRelationshipValue() accepted invalid values")
+			}
+		})
+	}
+}
+
+func TestValidateDescriptorRejectsDuplicateRelationshipKind(t *testing.T) {
+	err := ValidateDescriptor(Descriptor{
+		ID: "test",
+		Relationships: []RelationshipSchema{
+			{Kind: "suspicion"},
+			{Kind: "suspicion"},
+		},
+	})
+	if err == nil {
+		t.Fatal("ValidateDescriptor() accepted duplicate Relationship schema")
 	}
 }
 
