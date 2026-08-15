@@ -13,13 +13,13 @@ type ScopeKind string
 const (
 	ScopeUniverse ScopeKind = "universe"
 	ScopeCampaign ScopeKind = "campaign"
-	ScopeScenario ScopeKind = "scenario"
+	ScopeChapter  ScopeKind = "chapter"
 )
 
 type Scope struct {
 	Kind       ScopeKind `json:"kind,omitempty"`
 	CampaignID string    `json:"campaign,omitempty"`
-	ScenarioID string    `json:"scenario,omitempty"`
+	ChapterID  string    `json:"chapter,omitempty"`
 }
 
 type ComponentRequirement struct {
@@ -340,7 +340,7 @@ type InvokeRequest struct {
 	Kind          HandlerKind            `json:"kind"`
 	Handler       string                 `json:"handler"`
 	Campaign      string                 `json:"campaign"`
-	Scenario      string                 `json:"scenario"`
+	Chapter       string                 `json:"chapter"`
 	Actor         string                 `json:"actor,omitempty"`
 	Arguments     map[string]string      `json:"arguments,omitempty"`
 	Clock         int64                  `json:"clock"`
@@ -401,7 +401,7 @@ type ComponentSet struct {
 }
 
 // RelationshipSet creates or replaces a directed edge. Scope is "campaign" or
-// "scenario"; a Scenario-scoped edge requires IntroducedBy.
+// "chapter"; a Chapter-scoped edge requires IntroducedBy.
 type RelationshipSet struct {
 	ID           string         `json:"id"`
 	From         string         `json:"from"`

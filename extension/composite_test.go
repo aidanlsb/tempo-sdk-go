@@ -110,11 +110,11 @@ func TestCompositeInvokerKeepsNarrowerScope(t *testing.T) {
 		descriptor: Descriptor{
 			ID: "pack",
 			Recipes: []Recipe{{
-				ID: "tempo.move", Name: "Scenario Move",
+				ID: "tempo.move", Name: "Chapter Move",
 				Scope: Scope{
-					Kind: ScopeScenario, CampaignID: "story", ScenarioID: "opening",
+					Kind: ScopeChapter, CampaignID: "story", ChapterID: "opening",
 				},
-				Handler: "scenario-move",
+				Handler: "chapter-move",
 			}},
 		},
 	}

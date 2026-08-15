@@ -11,7 +11,7 @@ func TestContractRoundTrip(t *testing.T) {
 		ID: "test",
 		Components: []ComponentSchema{{
 			ID:    "test.state",
-			Scope: Scope{Kind: ScopeScenario, CampaignID: "story", ScenarioID: "opening"},
+			Scope: Scope{Kind: ScopeChapter, CampaignID: "story", ChapterID: "opening"},
 			Fields: []FieldSchema{{
 				ID:   "active",
 				Type: ValueBoolean,
@@ -27,7 +27,7 @@ func TestContractRoundTrip(t *testing.T) {
 		Recipes: []Recipe{{
 			ID:      "test.perform",
 			Name:    "Perform",
-			Scope:   Scope{Kind: ScopeScenario, CampaignID: "story", ScenarioID: "opening"},
+			Scope:   Scope{Kind: ScopeChapter, CampaignID: "story", ChapterID: "opening"},
 			Handler: "handler:test.perform",
 			Requires: Requirements{
 				Locations: []string{"observatory"},
@@ -166,19 +166,19 @@ func TestValidateDescriptorRejectsInvalidPerceptionRule(t *testing.T) {
 	}
 }
 
-func TestValidateDescriptorRejectsUnscopedScenario(t *testing.T) {
+func TestValidateDescriptorRejectsUnscopedChapter(t *testing.T) {
 	err := ValidateDescriptor(Descriptor{
 		ID: "test",
 		Systems: []System{{
 			ID:      "tick",
 			Name:    "Tick",
-			Scope:   Scope{Kind: ScopeScenario, ScenarioID: "opening"},
+			Scope:   Scope{Kind: ScopeChapter, ChapterID: "opening"},
 			Trigger: Trigger{Kind: TriggerTurnEnd},
 			Handler: "tick",
 		}},
 	})
 	if err == nil {
-		t.Fatal("ValidateDescriptor() accepted Scenario scope without Campaign")
+		t.Fatal("ValidateDescriptor() accepted Chapter scope without Campaign")
 	}
 }
 
