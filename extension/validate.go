@@ -400,16 +400,16 @@ func validateFields(fields []FieldSchema) error {
 func validateScope(scope Scope) error {
 	switch scope.Kind {
 	case "", ScopeUniverse:
-		if scope.CampaignID != "" || scope.ScenarioID != "" {
-			return fmt.Errorf("Universe scope cannot name a Campaign or Scenario")
+		if scope.CampaignID != "" || scope.ChapterID != "" {
+			return fmt.Errorf("Universe scope cannot name a Campaign or Chapter")
 		}
 	case ScopeCampaign:
-		if scope.CampaignID == "" || scope.ScenarioID != "" {
+		if scope.CampaignID == "" || scope.ChapterID != "" {
 			return fmt.Errorf("Campaign scope requires only a Campaign")
 		}
-	case ScopeScenario:
-		if scope.CampaignID == "" || scope.ScenarioID == "" {
-			return fmt.Errorf("Scenario scope requires a Campaign and Scenario")
+	case ScopeChapter:
+		if scope.CampaignID == "" || scope.ChapterID == "" {
+			return fmt.Errorf("Chapter scope requires a Campaign and Chapter")
 		}
 	default:
 		return fmt.Errorf("unsupported scope %q", scope.Kind)
@@ -423,5 +423,5 @@ func scopedID(scope Scope, id string) string {
 		kind = ScopeUniverse
 	}
 	return string(kind) + "\x00" + scope.CampaignID + "\x00" +
-		scope.ScenarioID + "\x00" + id
+		scope.ChapterID + "\x00" + id
 }
